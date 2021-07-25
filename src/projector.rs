@@ -2,27 +2,27 @@ pub trait Project<T, U>
 where
     U: Default,
 {
-    fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U;
+    fn from_stream<S: Iterator<Item = T>>(&self, stream: S) -> U;
 }
 
-pub struct Projector<T, U>
+pub struct Projector<'a, T, U>
 where
     U: Default,
 {
-    applier: fn(&T, &U) -> U,
+    applier: &'a dyn Fn(&T, &U) -> U,
 }
 
-impl<T, U> Projector<T, U>
+impl<'a, T, U> Projector<'a, T, U>
 where
     U: Default,
 {
-    pub fn from_applier(applier: fn(&T, &U) -> U) -> Self {
+    pub fn from_applier(applier: &'a dyn Fn(&T, &U) -> U) -> Self {
         Projector { applier }
     }
 }
 
-impl<T, U: Default> Project<T, U> for Projector<T, U> {
-    fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
+impl<'a, T, U: Default> Project<T, U> for Projector<'a, T, U> {
+    fn from_stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
         stream.fold(U::default(), |acc, cur| (self.applier)(&cur, &acc))
     }
 }
@@ -60,7 +60,7 @@ mod tests {
             },
         ];
         let projector =
-            Projector::from_applier(|event: &TestEvent, entity: &TestEntity| TestEntity {
+            Projector::from_applier(&|event: &TestEvent, entity: &TestEntity| TestEntity {
                 id: if let Some(id) = &entity.id {
                     Some(id.clone())
                 } else {
@@ -76,7 +76,7 @@ mod tests {
                     Some(event.timestamp.clone())
                 },
             });
-        let result = projector.stream(events.into_iter());
+        let result = projector.from_stream(events.into_iter());
         assert_eq!(
             result,
             TestEntity {

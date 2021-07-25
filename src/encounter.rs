@@ -128,8 +128,8 @@ fn apply(report: &VisitReport, enc: &Encounter) -> Encounter {
         })
 }
 
-pub fn encounter_projector() -> Projector<VisitReport, Encounter> {
-    Projector::from_applier(apply)
+pub fn encounter_projector() -> Projector<'static, VisitReport, Encounter> {
+    Projector::from_applier(&apply)
 }
 
 #[cfg(test)]
@@ -170,7 +170,7 @@ mod tests {
             ],
         };
         let stream = vec![report_0, report_1];
-        let projection = encounter_projector().stream(stream.into_iter());
+        let projection = encounter_projector().from_stream(stream.into_iter());
         todo!()
     }
 }
