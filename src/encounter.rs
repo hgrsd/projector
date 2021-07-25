@@ -1,4 +1,4 @@
-use crate::projector::{Project, Projector};
+use crate::projector::{Projector, Project};
 
 #[derive(Clone)]
 pub struct InnerCheckIn {
@@ -166,7 +166,7 @@ mod tests {
             })],
         };
         let stream = vec![report_0, report_1];
-        let projection = encounter_projector().from_stream(stream.into_iter());
+        let projection = encounter_projector().apply_all(stream.into_iter());
         todo!()
     }
 }
