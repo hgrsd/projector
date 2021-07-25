@@ -1,16 +1,7 @@
-use crate::projector::{Projector, Project};
+use crate::projector::{Project, Projector};
 
 #[derive(Clone)]
-pub struct InnerCheckIn {
-    pub id: String,
-    pub event_type: String,
-    pub timestamp: String,
-    pub care_recipient_id: String,
-    pub caregiver_id: String,
-}
-
-#[derive(Clone)]
-pub struct InnerCheckOut {
+pub struct EventData {
     pub id: String,
     pub event_type: String,
     pub timestamp: String,
@@ -20,8 +11,8 @@ pub struct InnerCheckOut {
 
 #[derive(Clone)]
 pub enum VisitEvent {
-    CheckIn(InnerCheckIn),
-    CheckOut(InnerCheckOut),
+    CheckIn(EventData),
+    CheckOut(EventData),
 }
 
 pub struct VisitReport {
@@ -29,20 +20,20 @@ pub struct VisitReport {
     pub visit_events: Vec<VisitEvent>,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct Period {
     pub start: Option<String>,
     pub end: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Participant {
     pub id: String,
     pub start: Option<String>,
     pub end: Option<String>,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct Encounter {
     pub period: Period,
     pub participant: Vec<Participant>,
@@ -139,25 +130,25 @@ mod tests {
         let report_0 = VisitReport {
             id: "1".to_owned(),
             visit_events: vec![
-                VisitEvent::CheckIn(InnerCheckIn {
+                VisitEvent::CheckIn(EventData {
                     event_type: "check_in".to_owned(),
                     id: "0".to_owned(),
                     care_recipient_id: "0".to_owned(),
                     caregiver_id: "0".to_owned(),
                     timestamp: "2021-01-01T00:00:00.000Z".to_owned(),
                 }),
-                VisitEvent::CheckOut(InnerCheckOut {
+                VisitEvent::CheckOut(EventData {
                     event_type: "check_out".to_owned(),
                     id: "0".to_owned(),
                     care_recipient_id: "0".to_owned(),
                     caregiver_id: "0".to_owned(),
-                    timestamp: "2021-01-01T00:00:00.000Z".to_owned(),
+                    timestamp: "2021-01-01T10:00:00.000Z".to_owned(),
                 }),
             ],
         };
         let report_1 = VisitReport {
             id: "1".to_owned(),
-            visit_events: vec![VisitEvent::CheckIn(InnerCheckIn {
+            visit_events: vec![VisitEvent::CheckIn(EventData {
                 event_type: "check_in".to_owned(),
                 id: "0".to_owned(),
                 care_recipient_id: "0".to_owned(),
@@ -166,7 +157,28 @@ mod tests {
             })],
         };
         let stream = vec![report_0, report_1];
-        let projection = encounter_projector().apply_all(stream.into_iter());
-        todo!()
+        let result = encounter_projector().apply_all(stream.into_iter());
+        assert_eq!(
+            result.period,
+            Period {
+                start: Some("2020-12-31T00:00:00.001Z".to_owned()),
+                end: Some("2021-01-01T10:00:00.000Z".to_owned()),
+            },
+        );
+        assert_eq!(
+            result.participant,
+            vec![
+                Participant {
+                    id: "0".to_owned(),
+                    start: Some("2021-01-01T00:00:00.000Z".to_owned()),
+                    end: Some("2021-01-01T10:00:00.000Z".to_owned()),
+                },
+                Participant {
+                    id: "1".to_owned(),
+                    start: Some("2020-12-31T00:00:00.001Z".to_owned()),
+                    end: None,
+                }
+            ],
+        );
     }
 }

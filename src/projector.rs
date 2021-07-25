@@ -101,8 +101,7 @@ mod tests {
                 timestamp: String::from("ts-3"),
             },
         ];
-        let projector = Projector::from_applier(&test_applier);
-        let result = projector.apply_all(events.into_iter());
+        let result = Projector::from_applier(&test_applier).apply_all(events.into_iter());
         assert_eq!(
             result,
             TestEntity {
@@ -132,11 +131,13 @@ mod tests {
                 timestamp: String::from("ts-8"),
             },
         ];
-        let projector = Projector::from_applier(&test_applier);
-        let result = projector.find_state(events.into_iter(), &|entity| match &entity.timestamp {
-            Some(ts) => ts.contains("8"),
-            None => false,
-        });
+        let result =
+            Projector::from_applier(&test_applier).find_state(events.into_iter(), &|entity| {
+                match &entity.timestamp {
+                    Some(ts) => ts.contains("8"),
+                    None => false,
+                }
+            });
         assert_eq!(
             result,
             Some(TestEntity {
