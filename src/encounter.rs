@@ -20,20 +20,20 @@ pub struct VisitReport {
     pub visit_events: Vec<VisitEvent>,
 }
 
-#[derive(Default, Clone, Debug, Eq, PartialEq)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Period {
     pub start: Option<String>,
     pub end: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Participant {
     pub id: String,
     pub start: Option<String>,
     pub end: Option<String>,
 }
 
-#[derive(Default, Clone, Debug, Eq, PartialEq)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Encounter {
     pub period: Period,
     pub participant: Vec<Participant>,
@@ -157,7 +157,7 @@ mod tests {
             })],
         };
         let stream = vec![report_0, report_1];
-        let result = encounter_projector().apply_all(stream.into_iter());
+        let result = encounter_projector().from_stream(stream.into_iter());
         assert_eq!(
             result.period,
             Period {

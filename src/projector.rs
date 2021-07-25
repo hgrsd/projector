@@ -1,9 +1,13 @@
+use core::hash::Hash;
+use itertools::Itertools;
+
 pub trait Project<T, U>
 where
-    U: Default + Clone,
+    U: Default + Clone + Hash + Eq,
 {
-    fn apply_all<S: Iterator<Item = T>>(&self, stream: S) -> U;
-    fn find_state<S: Iterator<Item = T>>(
+    fn versions_from_stream<S: Iterator<Item = T>>(&self, stream: S) -> Vec<U>;
+    fn from_stream<S: Iterator<Item = T>>(&self, stream: S) -> U;
+    fn find_from_stream<S: Iterator<Item = T>>(
         &self,
         stream: S,
         matcher: &dyn Fn(&U) -> bool,
@@ -12,26 +16,36 @@ where
 
 pub struct Projector<'a, T, U>
 where
-    U: Default + Clone,
+    U: Default + Clone + Hash + Eq,
 {
     applier: &'a dyn Fn(&T, &U) -> U,
 }
 
 impl<'a, T, U> Projector<'a, T, U>
 where
-    U: Default + Clone,
+    U: Default + Clone + Hash + Eq,
 {
     pub fn from_applier(applier: &'a dyn Fn(&T, &U) -> U) -> Self {
         Projector { applier }
     }
 }
 
-impl<'a, T, U: Default + Clone> Project<T, U> for Projector<'a, T, U> {
-    fn apply_all<S: Iterator<Item = T>>(&self, stream: S) -> U {
+impl<'a, T, U: Default + Clone + Hash + Eq> Project<T, U> for Projector<'a, T, U> {
+    fn from_stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
         stream.fold(U::default(), |acc, cur| (self.applier)(&cur, &acc))
     }
 
-    fn find_state<S: Iterator<Item = T>>(
+    fn versions_from_stream<'b, S: Iterator<Item = T>>(&self, stream: S) -> Vec<U> {
+        stream
+            .scan(U::default(), |state, cur| {
+                *state = (self.applier)(&cur, state);
+                Some(state.clone())
+            })
+            .unique()
+            .collect()
+    }
+
+    fn find_from_stream<S: Iterator<Item = T>>(
         &self,
         stream: S,
         matcher: &dyn Fn(&U) -> bool,
@@ -51,7 +65,7 @@ mod tests {
     use super::*;
     use std::cmp::Ordering;
 
-    #[derive(Default, PartialEq, Eq, Debug, Clone)]
+    #[derive(Default, PartialEq, Eq, Debug, Clone, Hash)]
     struct TestEntity {
         id: Option<String>,
         timestamp: Option<String>,
@@ -101,7 +115,7 @@ mod tests {
                 timestamp: String::from("ts-3"),
             },
         ];
-        let result = Projector::from_applier(&test_applier).apply_all(events.into_iter());
+        let result = Projector::from_applier(&test_applier).from_stream(events.into_iter());
         assert_eq!(
             result,
             TestEntity {
@@ -116,15 +130,45 @@ mod tests {
         let events = vec![
             TestEvent {
                 id: String::from("id-1"),
+                timestamp: String::from("ts-3"),
+            },
+            TestEvent {
+                id: String::from("id-1"),
+                timestamp: String::from("ts-8"),
+            },
+            TestEvent {
+                id: String::from("id-1"),
                 timestamp: String::from("ts-1"),
             },
+        ];
+        let result =
+            Projector::from_applier(&test_applier).find_from_stream(events.into_iter(), &|state| {
+                if let Some(ts) = &state.timestamp {
+                    ts.contains("8")
+                } else {
+                    false
+                }
+            });
+
+        assert_eq!(
+            result,
+            Some(TestEntity {
+                id: Some(String::from("id-1")),
+                timestamp: Some(String::from("ts-8")),
+            },)
+        );
+    }
+
+    #[test]
+    fn versions() {
+        let events = vec![
             TestEvent {
                 id: String::from("id-1"),
                 timestamp: String::from("ts-3"),
             },
             TestEvent {
                 id: String::from("id-1"),
-                timestamp: String::from("ts-2"),
+                timestamp: String::from("ts-1"),
             },
             TestEvent {
                 id: String::from("id-1"),
@@ -132,18 +176,20 @@ mod tests {
             },
         ];
         let result =
-            Projector::from_applier(&test_applier).find_state(events.into_iter(), &|entity| {
-                match &entity.timestamp {
-                    Some(ts) => ts.contains("8"),
-                    None => false,
-                }
-            });
+            Projector::from_applier(&test_applier).versions_from_stream(events.into_iter());
+
         assert_eq!(
             result,
-            Some(TestEntity {
-                id: Some(String::from("id-1")),
-                timestamp: Some(String::from("ts-8")),
-            })
+            vec![
+                TestEntity {
+                    id: Some(String::from("id-1")),
+                    timestamp: Some(String::from("ts-3")),
+                },
+                TestEntity {
+                    id: Some(String::from("id-1")),
+                    timestamp: Some(String::from("ts-8")),
+                }
+            ],
         );
     }
 }
