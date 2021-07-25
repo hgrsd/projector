@@ -20,10 +20,8 @@ where
         Projector { applier }
     }
 
-    pub fn process_stream<S: IntoIterator<Item = T>>(&self, stream: S) -> U {
-        stream
-            .into_iter()
-            .fold(U::default(), |acc, cur| (self.applier)(&cur, &acc))
+    pub fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
+        stream.fold(U::default(), |acc, cur| (self.applier)(&cur, &acc))
     }
 }
 
@@ -76,7 +74,7 @@ mod tests {
                     Some(event.timestamp.clone())
                 },
             });
-        let result = projector.process_stream(events);
+        let result = projector.stream(events.into_iter());
         assert_eq!(
             result,
             TestEntity {

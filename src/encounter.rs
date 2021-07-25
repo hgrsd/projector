@@ -170,7 +170,7 @@ mod tests {
             ],
         };
         let stream = vec![report_0, report_1];
-        let projection = encounter_projector().process_stream(stream);
+        let projection = encounter_projector().stream(stream.into_iter());
         todo!()
     }
 }
