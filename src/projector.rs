@@ -1,8 +1,8 @@
-trait Project<T, U>
+pub trait Project<T, U>
 where
     U: Default,
 {
-    fn apply_stream<S: IntoIterator<Item = T>>(&self, stream: S) -> U;
+    fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U;
 }
 
 pub struct Projector<T, U>
@@ -19,8 +19,10 @@ where
     pub fn from_applier(applier: fn(&T, &U) -> U) -> Self {
         Projector { applier }
     }
+}
 
-    pub fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
+impl<T, U: Default> Project<T, U> for Projector<T, U> {
+    fn stream<S: Iterator<Item = T>>(&self, stream: S) -> U {
         stream.fold(U::default(), |acc, cur| (self.applier)(&cur, &acc))
     }
 }

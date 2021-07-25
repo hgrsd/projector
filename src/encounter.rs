@@ -1,4 +1,4 @@
-use crate::projector::Projector;
+use crate::projector::{Projector, Project};
 
 #[derive(Clone)]
 pub struct InnerCheckIn {
