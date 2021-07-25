@@ -1,4 +1,4 @@
-use crate::projector::{Projector, Project};
+use crate::projector::{Project, Projector};
 
 #[derive(Clone)]
 pub struct InnerCheckIn {
@@ -118,18 +118,16 @@ fn apply_period(event: &VisitEvent, existing: &Period) -> Period {
     }
 }
 
-fn apply(report: &VisitReport, enc: &Encounter) -> Encounter {
-    report
-        .visit_events
-        .iter()
-        .fold(enc.clone(), |acc, event| Encounter {
-            period: apply_period(&event, &acc.period),
-            participant: apply_participant(&event, &acc.participant),
-        })
-}
-
 pub fn encounter_projector() -> Projector<'static, VisitReport, Encounter> {
-    Projector::from_applier(&apply)
+    Projector::from_applier(&|report, encounter| {
+        report
+            .visit_events
+            .iter()
+            .fold(encounter.clone(), |acc, event| Encounter {
+                period: apply_period(&event, &acc.period),
+                participant: apply_participant(&event, &acc.participant),
+            })
+    })
 }
 
 #[cfg(test)]
@@ -159,15 +157,13 @@ mod tests {
         };
         let report_1 = VisitReport {
             id: "1".to_owned(),
-            visit_events: vec![
-                VisitEvent::CheckIn(InnerCheckIn {
-                    event_type: "check_in".to_owned(),
-                    id: "0".to_owned(),
-                    care_recipient_id: "0".to_owned(),
-                    caregiver_id: "1".to_owned(),
-                    timestamp: "2020-12-31T00:00:00.001Z".to_owned(),
-                }),
-            ],
+            visit_events: vec![VisitEvent::CheckIn(InnerCheckIn {
+                event_type: "check_in".to_owned(),
+                id: "0".to_owned(),
+                care_recipient_id: "0".to_owned(),
+                caregiver_id: "1".to_owned(),
+                timestamp: "2020-12-31T00:00:00.001Z".to_owned(),
+            })],
         };
         let stream = vec![report_0, report_1];
         let projection = encounter_projector().from_stream(stream.into_iter());
