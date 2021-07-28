@@ -42,7 +42,7 @@ where
     pub fn match_from_stream<S: Iterator<Item = U>>(
         &self,
         stream: S,
-        matcher: &dyn Fn(&T) -> bool,
+        matcher: impl Fn(&T) -> bool,
     ) -> Option<T> {
         self.stream_entities(stream).find(|e| matcher(e)).to_owned()
     }
@@ -129,16 +129,14 @@ mod tests {
                 timestamp: String::from("ts-1"),
             },
         ];
-        let result = Projector::from_applier(&test_applier).match_from_stream(
-            events.into_iter(),
-            &|state| {
+        let result =
+            Projector::from_applier(&test_applier).match_from_stream(events.into_iter(), |state| {
                 if let Some(ts) = &state.timestamp {
                     ts.contains("8")
                 } else {
                     false
                 }
-            },
-        );
+            });
 
         assert_eq!(
             result,
