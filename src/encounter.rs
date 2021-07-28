@@ -1,4 +1,4 @@
-use crate::projector::{Project, Projector};
+use crate::projector::Projector;
 
 #[derive(Clone)]
 pub struct EventData {
@@ -109,8 +109,9 @@ fn apply_period(event: &VisitEvent, existing: &Period) -> Period {
     }
 }
 
-pub fn encounter_projector() -> Projector<'static, VisitReport, Encounter> {
-    Projector::from_applier(&|report, encounter| {
+pub fn encounter_projector<'a>(
+) -> Projector<'a, Encounter, VisitReport, impl Fn(&Encounter, &VisitReport) -> Encounter> {
+    Projector::from_applier(|encounter: &Encounter, report: &VisitReport| {
         report
             .visit_events
             .iter()
@@ -157,7 +158,7 @@ mod tests {
             })],
         };
         let stream = vec![report_0, report_1];
-        let result = encounter_projector().from_stream(stream.into_iter());
+        let result = encounter_projector().project_last_state(stream.into_iter());
         assert_eq!(
             result.period,
             Period {
