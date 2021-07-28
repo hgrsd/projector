@@ -1,22 +1,22 @@
 use std::marker::PhantomData;
 
-pub struct Projector<'a, TEntity, TEvent, TApplier>
+pub struct Projector<'a, T, U, V>
 where
-    TEntity: Default + Clone,
-    TApplier: Fn(&TEntity, &TEvent) -> TEntity,
+    T: Default + Clone,
+    V: Fn(&T, &U) -> T,
 {
     _l0: &'a PhantomData<()>,
-    _e0: PhantomData<TEntity>,
-    _e1: PhantomData<TEvent>,
-    applier: TApplier,
+    _e0: PhantomData<T>,
+    _e1: PhantomData<U>,
+    applier: V,
 }
 
-impl<'a, TEntity, TEvent, TApplier> Projector<'a, TEntity, TEvent, TApplier>
+impl<'a, T, U, V> Projector<'a, T, U, V>
 where
-    TEntity: Default + Clone,
-    TApplier: Fn(&TEntity, &TEvent) -> TEntity,
+    T: Default + Clone,
+    V: Fn(&T, &U) -> T,
 {
-    pub fn from_applier(applier: TApplier) -> Self {
+    pub fn from_applier(applier: V) -> Self {
         Projector {
             _l0: &PhantomData,
             _e0: PhantomData,
@@ -25,27 +25,25 @@ where
         }
     }
 
-    pub fn stream_entities<SIn: Iterator<Item = TEvent> + 'a>(
+    pub fn stream_entities<S: Iterator<Item = U> + 'a>(
         &'a self,
-        stream: SIn,
-    ) -> impl Iterator<Item = TEntity> + 'a {
-        stream.scan(TEntity::default(), move |state, cur| {
+        stream: S,
+    ) -> impl Iterator<Item = T> + 'a {
+        stream.scan(T::default(), move |state, cur| {
             *state = (self.applier)(state, &cur);
             Some(state.clone())
         })
     }
 
-    pub fn project_last_state<S: Iterator<Item = TEvent>>(&self, stream: S) -> TEntity {
-        self.stream_entities(stream)
-            .last()
-            .unwrap_or(TEntity::default())
+    pub fn project_last_state<S: Iterator<Item = U>>(&self, stream: S) -> T {
+        self.stream_entities(stream).last().unwrap_or(T::default())
     }
 
-    pub fn match_from_stream<S: Iterator<Item = TEvent>>(
+    pub fn match_from_stream<S: Iterator<Item = U>>(
         &self,
         stream: S,
-        matcher: &dyn Fn(&TEntity) -> bool,
-    ) -> Option<TEntity> {
+        matcher: &dyn Fn(&T) -> bool,
+    ) -> Option<T> {
         self.stream_entities(stream).find(|e| matcher(e)).to_owned()
     }
 }
