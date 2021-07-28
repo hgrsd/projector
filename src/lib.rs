@@ -1,2 +1,4 @@
 pub mod projector;
-mod encounter;
+pub mod example;
+
+pub use crate::projector::*;
