@@ -1,17 +1,16 @@
 use std::marker::PhantomData;
 
-pub struct Projector<'a, T, U, V>
+pub struct Projector<T, U, V>
 where
     T: Default + Clone,
     V: Fn(&T, &U) -> T,
 {
-    _l0: &'a PhantomData<()>,
     _e0: PhantomData<T>,
     _e1: PhantomData<U>,
     applier: V,
 }
 
-impl<'a, T, U, V> Projector<'a, T, U, V>
+impl<T, U, V> Projector<T, U, V>
 where
     T: Default + Clone,
     V: Fn(&T, &U) -> T,
@@ -46,7 +45,6 @@ where
     /// ```
     pub fn from_applier(applier: V) -> Self {
         Projector {
-            _l0: &PhantomData,
             _e0: PhantomData,
             _e1: PhantomData,
             applier,
@@ -94,7 +92,7 @@ where
     ///     ],
     /// );
     /// ```
-    pub fn stream_entities<S: Iterator<Item = U> + 'a>(
+    pub fn stream_entities<'a, S: Iterator<Item = U> + 'a>(
         &'a self,
         stream: S,
     ) -> impl Iterator<Item = T> + 'a {
@@ -144,7 +142,7 @@ where
     /// );
     /// ```
     pub fn project_last_state<S: Iterator<Item = U>>(&self, stream: S) -> T {
-        self.stream_entities(stream).last().unwrap_or(T::default())
+        self.stream_entities(stream).last().unwrap_or_default()
     }
 
     /// Project a stream of events (i.e. an Iterator<T>) until an entity for which the given
@@ -194,6 +192,6 @@ where
         stream: S,
         matcher: impl Fn(&T) -> bool,
     ) -> Option<T> {
-        self.stream_entities(stream).find(|e| matcher(e)).to_owned()
+        self.stream_entities(stream).find(|e| matcher(e))
     }
 }

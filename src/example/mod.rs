@@ -39,29 +39,29 @@ pub struct Encounter {
     pub participant: Vec<Participant>,
 }
 
-fn min_opt(t0: &Option<String>, t1: &String) -> String {
+fn min_opt(t0: &Option<String>, t1: &str) -> String {
     if let Some(unw0) = t0 {
-        String::min(unw0.clone(), t1.clone())
+        String::min(unw0.clone(), t1.to_owned())
     } else {
-        t1.clone()
+        t1.to_owned()
     }
 }
 
-fn max_opt(t0: &Option<String>, t1: &String) -> String {
+fn max_opt(t0: &Option<String>, t1: &str) -> String {
     if let Some(unw0) = t0 {
-        String::max(unw0.clone(), t1.clone())
+        String::max(unw0.clone(), t1.to_owned())
     } else {
-        t1.clone()
+        t1.to_owned()
     }
 }
 
-fn apply_participant(event: &VisitEvent, participant: &Vec<Participant>) -> Vec<Participant> {
+fn apply_participant(event: &VisitEvent, participant: &[Participant]) -> Vec<Participant> {
     let id = match &event {
         VisitEvent::CheckIn(c) => &c.caregiver_id,
         VisitEvent::CheckOut(c) => &c.caregiver_id,
     };
 
-    let new_entry = match participant.into_iter().find(|p| p.id == *id) {
+    let new_entry = match participant.iter().find(|p| p.id == *id) {
         Some(p) => match &event {
             VisitEvent::CheckIn(c) => Participant {
                 id: id.clone(),
@@ -89,7 +89,7 @@ fn apply_participant(event: &VisitEvent, participant: &Vec<Participant>) -> Vec<
     };
 
     participant
-        .into_iter()
+        .iter()
         .cloned()
         .filter(|p| p.id != *id)
         .chain(vec![new_entry].into_iter())
@@ -109,15 +109,15 @@ fn apply_period(event: &VisitEvent, existing: &Period) -> Period {
     }
 }
 
-pub fn encounter_projector<'a>(
-) -> Projector<'a, Encounter, VisitReport, impl Fn(&Encounter, &VisitReport) -> Encounter> {
+pub fn encounter_projector(
+) -> Projector<Encounter, VisitReport, impl Fn(&Encounter, &VisitReport) -> Encounter> {
     Projector::from_applier(|encounter: &Encounter, report: &VisitReport| {
         report
             .visit_events
             .iter()
             .fold(encounter.clone(), |acc, event| Encounter {
-                period: apply_period(&event, &acc.period),
-                participant: apply_participant(&event, &acc.participant),
+                period: apply_period(event, &acc.period),
+                participant: apply_participant(event, &acc.participant),
             })
     })
 }
